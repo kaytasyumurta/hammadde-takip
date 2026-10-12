@@ -1,11 +1,10 @@
-# app.py - Hammadde Fiyat ve Takip Sistemi (Bulut & SQLAlchemy Uyumlu Faz 1)
+# app.py - Hammadde Fiyat ve Takip Sistemi (Bulut & SQLAlchemy Uyumlu)
 from datetime import datetime
 from functools import wraps
 import os
 from flask import (
     Flask,
     flash,
-    g,
     redirect,
     render_template_string,
     request,
@@ -18,7 +17,6 @@ from werkzeug.security import check_password_hash, generate_password_hash
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "hammadde_takip_gizli_anahtar_2026")
 
-# Veritabanı Ayarı (Render/Neon'dan gelen URL'yi destekler)
 db_url = os.environ.get("DATABASE_URL", "sqlite:///hammadde_sistemi.db")
 if db_url and db_url.startswith("postgres://"):
   db_url = db_url.replace("postgres://", "postgresql://", 1)
@@ -115,48 +113,44 @@ class Price(db.Model):
   supplier = db.relationship("Supplier", backref="prices")
 
 
-# Veritabanını ve Varsayılan Kategorileri Otomatik Oluştur
 with app.app_context():
   db.create_all()
   if Category.query.count() == 0:
-    default_cats = ["Kimyasallar", "Metaller", "Plastikler", "Ambalaj", "Diğer"]
-    for cat_name in default_cats:
+    for cat_name in ["Kimyasallar", "Metaller", "Plastikler", "Ambalaj", "Diğer"]:
       db.session.add(Category(name=cat_name))
     db.session.commit()
 
 
-# --- YARDIMCI FONKSİYONLAR & DEKORATÖRLER ---
 def log_action(user_id, action, details):
-  log = AuditLog(user_id=user_id, action=action, details=details)
-  db.session.add(log)
+  db.session.add(AuditLog(user_id=user_id, action=action, details=details))
   db.session.commit()
 
 
 def login_required(f):
   @wraps(f)
-  def decorated_function(*args, **kwargs):
+  def decorated(*args, **kwargs):
     if "user_id" not in session:
       flash("Lütfen önce giriş yapın.", "error")
       return redirect(url_for("login"))
     return f(*args, **kwargs)
 
-  return decorated_function
+  return decorated
 
 
 def admin_required(f):
   @wraps(f)
-  def decorated_function(*args, **kwargs):
+  def decorated(*args, **kwargs):
     if "user_id" not in session or session.get("role") != "admin":
       flash("Bu işlem için Admin yetkisi gerekiyor.", "error")
       return redirect(url_for("index"))
     return f(*args, **kwargs)
 
-  return decorated_function
+  return decorated
 
 
 def editor_or_admin_required(f):
   @wraps(f)
-  def decorated_function(*args, **kwargs):
+  def decorated(*args, **kwargs):
     if "user_id" not in session or session.get("role") not in [
         "admin",
         "yonetici",
@@ -165,7 +159,7 @@ def editor_or_admin_required(f):
       return redirect(url_for("index"))
     return f(*args, **kwargs)
 
-  return decorated_function
+  return decorated
 
 
 def tr_format(value):
@@ -186,127 +180,111 @@ def tr_format(value):
 app.jinja_env.filters["tr_num"] = tr_format
 
 
-# --- HTML ŞABLONLARI ---
-BASE_TEMPLATE = """
-<!DOCTYPE html>
-<html lang="tr" x-data="{ darkMode: localStorage.getItem('darkMode') === 'true' }" :class="{ 'dark': darkMode }">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hammadde Fiyat Takip Sistemi</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = { darkMode: 'class', theme: { extend: {} } }
-    </script>
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-</head>
-<body class="bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 min-h-screen flex flex-col transition-colors duration-200">
-    <nav class="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 shadow-sm sticky top-0 z-50">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between h-16">
-                <div class="flex items-center space-x-8">
-                    <a href="{{ url_for('index') }}" class="font-bold text-xl text-blue-600 dark:text-blue-400 flex items-center gap-2">
-                        <i class="fa-solid fa-boxes-stacked"></i> Hammadde Takip
-                    </a>
-                    {% if session.get('user_id') and session.get('status') == 'active' %}
-                    <div class="hidden md:flex space-x-4">
-                        <a href="{{ url_for('materials') }}" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-700">Hammaddeler</a>
-                        <a href="{{ url_for('suppliers') }}" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-700">Firmalar</a>
-                        <a href="{{ url_for('prices') }}" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-700">Fiyatlar ve Karşılaştırma</a>
-                        {% if session.get('role') in ['admin', 'yonetici'] %}
-                        <a href="{{ url_for('logs') }}" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-700">Loglar</a>
-                        {% endif %}
-                        {% if session.get('role') == 'admin' %}
-                        <a href="{{ url_for('admin_users') }}" class="px-3 py-2 rounded-md text-sm font-medium text-amber-600 dark:text-amber-400 hover:bg-slate-100 dark:hover:bg-slate-700">Kullanıcı Yönetimi</a>
+def render_page(content_html, **kwargs):
+  base = """
+    <!DOCTYPE html>
+    <html lang="tr" x-data="{ darkMode: localStorage.getItem('darkMode') === 'true' }" :class="{ 'dark': darkMode }">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Hammadde Fiyat ve Takip Sistemi</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <script>tailwind.config = { darkMode: 'class', theme: { extend: {} } }</script>
+        <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    </head>
+    <body class="bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 min-h-screen flex flex-col transition-colors duration-200">
+        <nav class="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 shadow-sm sticky top-0 z-50">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between h-16">
+                    <div class="flex items-center space-x-8">
+                        <a href="{{ url_for('index') }}" class="font-bold text-xl text-blue-600 dark:text-blue-400 flex items-center gap-2">
+                            <i class="fa-solid fa-boxes-stacked"></i> Hammadde Takip
+                        </a>
+                        {% if session.get('user_id') and session.get('status') == 'active' %}
+                        <div class="hidden md:flex space-x-4">
+                            <a href="{{ url_for('materials') }}" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-700">Hammaddeler</a>
+                            <a href="{{ url_for('suppliers') }}" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-700">Firmalar</a>
+                            <a href="{{ url_for('prices') }}" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-700">Fiyatlar ve Karşılaştırma</a>
+                            {% if session.get('role') in ['admin', 'yonetici'] %}
+                            <a href="{{ url_for('logs') }}" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-700">Loglar</a>
+                            {% endif %}
+                            {% if session.get('role') == 'admin' %}
+                            <a href="{{ url_for('admin_users') }}" class="px-3 py-2 rounded-md text-sm font-medium text-amber-600 dark:text-amber-400 hover:bg-slate-100 dark:hover:bg-slate-700">Kullanıcı Yönetimi</a>
+                            {% endif %}
+                        </div>
                         {% endif %}
                     </div>
-                    {% endif %}
-                </div>
-                <div class="flex items-center space-x-4">
-                    <button @click="darkMode = !darkMode; localStorage.setItem('darkMode', darkMode)" class="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700">
-                        <i class="fa-solid" :class="darkMode ? 'fa-sun text-yellow-400' : 'fa-moon text-slate-600'"></i>
-                    </button>
-                    {% if session.get('user_id') %}
-                        <div class="text-sm font-medium hidden sm:block">
-                            {{ session.get('username') }} <span class="text-xs px-2 py-0.5 rounded bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 uppercase">{{ session.get('role') }}</span>
-                        </div>
-                        <a href="{{ url_for('logout') }}" class="px-3 py-2 text-sm font-medium bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 rounded-md hover:bg-rose-100">Çıkış</a>
-                    {% else %}
-                        <a href="{{ url_for('login') }}" class="text-sm font-medium hover:text-blue-600">Giriş Yap</a>
-                        <a href="{{ url_for('register') }}" class="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-md hover:bg-blue-700 shadow-sm">Kayıt Ol</a>
-                    {% endif %}
+                    <div class="flex items-center space-x-4">
+                        <button @click="darkMode = !darkMode; localStorage.setItem('darkMode', darkMode)" class="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700">
+                            <i class="fa-solid" :class="darkMode ? 'fa-sun text-yellow-400' : 'fa-moon text-slate-600'"></i>
+                        </button>
+                        {% if session.get('user_id') %}
+                            <div class="text-sm font-medium hidden sm:block">
+                                {{ session.get('username') }} <span class="text-xs px-2 py-0.5 rounded bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 uppercase">{{ session.get('role') }}</span>
+                            </div>
+                            <a href="{{ url_for('logout') }}" class="px-3 py-2 text-sm font-medium bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 rounded-md hover:bg-rose-100">Çıkış</a>
+                        {% else %}
+                            <a href="{{ url_for('login') }}" class="text-sm font-medium hover:text-blue-600">Giriş Yap</a>
+                            <a href="{{ url_for('register') }}" class="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-md hover:bg-blue-700 shadow-sm">Kayıt Ol</a>
+                        {% endif %}
+                    </div>
                 </div>
             </div>
+        </nav>
+        <div class="max-w-7xl mx-auto px-4 mt-4 w-full">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message %}
+                        <div class="p-4 mb-4 rounded-lg text-sm border {{ 'bg-emerald-50 border-emerald-200 text-emerald-800 dark:bg-emerald-900/30 dark:border-emerald-800 dark:text-emerald-300' if category == 'success' else 'bg-rose-50 border-rose-200 text-rose-800 dark:bg-rose-900/30 dark:border-rose-800 dark:text-rose-300' }}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
         </div>
-    </nav>
-
-    <div class="max-w-7xl mx-auto px-4 mt-4 w-full">
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message %}
-                    <div class="p-4 mb-4 rounded-lg text-sm border {{ 'bg-emerald-50 border-emerald-200 text-emerald-800 dark:bg-emerald-900/30 dark:border-emerald-800 dark:text-emerald-300' if category == 'success' else 'bg-rose-50 border-rose-200 text-rose-800 dark:bg-rose-900/30 dark:border-rose-800 dark:text-rose-300' }}">
-                        {{ message }}
-                    </div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
-    </div>
-
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-grow w-full">
-        {% block content %}{% endblock %}
-    </main>
-
-    <footer class="bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 py-4 text-center text-xs text-slate-500">
-        Hammadde Fiyat ve Takip Sistemi &copy; 2026 | Bulut Veritabanı Entegrasyonlu
-    </footer>
-</body>
-</html>
-"""
+        <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-grow w-full">
+            {{ content_html | safe }}
+        </main>
+        <footer class="bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 py-4 text-center text-xs text-slate-500">
+            Hammadde Fiyat ve Takip Sistemi &copy; 2026 | Bulut Veritabanı Entegrasyonlu
+        </footer>
+    </body>
+    </html>
+    """
+  return render_template_string(base, **kwargs)
 
 
 @app.route("/")
 def index():
   if "user_id" not in session:
-    return render_template_string(
-        BASE_TEMPLATE
-        + """
-    {% block content %}
-    <div class="max-w-xl mx-auto text-center py-16">
-        <h1 class="text-4xl font-extrabold tracking-tight mb-4">Hammadde ve Tedarik Takip Sistemi</h1>
-        <p class="text-slate-600 dark:text-slate-400 mb-8">Bulut tabanlı güvenli altyapı ile hammadde fiyatlarını ve tedarikçileri her yerden yönetin.</p>
-        <div class="flex justify-center gap-4">
-            <a href="{{ url_for('login') }}" class="px-6 py-3 bg-blue-600 text-white font-medium rounded-lg shadow hover:bg-blue-700">Giriş Yap</a>
-            <a href="{{ url_for('register') }}" class="px-6 py-3 bg-slate-200 dark:bg-slate-700 font-medium rounded-lg hover:bg-slate-300">Kayıt Ol</a>
+    return render_page("""
+        <div class="max-w-xl mx-auto text-center py-16">
+            <h1 class="text-4xl font-extrabold tracking-tight mb-4">Hammadde ve Tedarik Takip Sistemi</h1>
+            <p class="text-slate-600 dark:text-slate-400 mb-8">Bulut tabanlı güvenli altyapı ile hammadde fiyatlarını ve tedarikçileri her yerden yönetin.</p>
+            <div class="flex justify-center gap-4">
+                <a href="%s" class="px-6 py-3 bg-blue-600 text-white font-medium rounded-lg shadow hover:bg-blue-700">Giriş Yap</a>
+                <a href="%s" class="px-6 py-3 bg-slate-200 dark:bg-slate-700 font-medium rounded-lg hover:bg-slate-300">Kayıt Ol</a>
+            </div>
         </div>
-    </div>
-    {% endblock %}
-    """
-    )
+        """ % (url_for('login'), url_for('register')))
 
   if session.get("status") == "pending":
-    return render_template_string(
-        BASE_TEMPLATE
-        + """
-    {% block content %}
-    <div class="max-w-md mx-auto text-center py-16 bg-white dark:bg-slate-800 p-8 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
-        <i class="fa-solid fa-clock-rotate-left text-amber-500 text-5xl mb-4"></i>
-        <h2 class="text-2xl font-bold mb-2">Hesabınız Onay Bekliyor</h2>
-        <p class="text-slate-600 dark:text-slate-400 mb-6">Yönetici onayından sonra tüm özelliklere erişebileceksiniz.</p>
-        <a href="{{ url_for('logout') }}" class="px-4 py-2 bg-slate-200 dark:bg-slate-700 rounded-lg text-sm font-medium">Çıkış Yap</a>
-    </div>
-    {% endblock %}
-    """
-    )
+    return render_page(f"""
+        <div class="max-w-md mx-auto text-center py-16 bg-white dark:bg-slate-800 p-8 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+            <i class="fa-solid fa-clock-rotate-left text-amber-500 text-5xl mb-4"></i>
+            <h2 class="text-2xl font-bold mb-2">Hesabınız Onay Bekliyor</h2>
+            <p class="text-slate-600 dark:text-slate-400 mb-6">Yönetici onayından sonra tüm özelliklere erişebileceksiniz.</p>
+            <a href="{url_for('logout')}" class="px-4 py-2 bg-slate-200 dark:bg-slate-700 rounded-lg text-sm font-medium">Çıkış Yap</a>
+        </div>
+        """)
 
   m_count = RawMaterial.query.count()
   s_count = Supplier.query.count()
   p_count = Price.query.count()
 
-  return render_template_string(
-      BASE_TEMPLATE
-      + """
-    {% block content %}
+  return render_page(
+      """
     <div class="space-y-6">
         <div class="flex justify-between items-center">
             <h1 class="text-2xl font-bold">Kontrol Paneli</h1>
@@ -335,7 +313,6 @@ def index():
             </div>
         </div>
     </div>
-    {% endblock %}
     """,
       m_count=m_count,
       s_count=s_count,
@@ -382,10 +359,7 @@ def register():
       db.session.rollback()
       flash("Bu kullanıcı adı veya e-posta zaten kullanımda.", "error")
 
-  return render_template_string(
-      BASE_TEMPLATE
-      + """
-    {% block content %}
+  return render_page("""
     <div class="max-w-md mx-auto bg-white dark:bg-slate-800 p-8 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
         <h2 class="text-2xl font-bold mb-6 text-center">Kayıt Ol</h2>
         <form method="POST" class="space-y-4">
@@ -395,9 +369,7 @@ def register():
             <button type="submit" class="w-full py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700">Kayıt Ol</button>
         </form>
     </div>
-    {% endblock %}
-    """
-  )
+    """)
 
 
 @app.route("/login", methods=["GET", "POST"])
@@ -418,10 +390,7 @@ def login():
     else:
       flash("Geçersiz kullanıcı adı veya şifre.", "error")
 
-  return render_template_string(
-      BASE_TEMPLATE
-      + """
-    {% block content %}
+  return render_page("""
     <div class="max-w-md mx-auto bg-white dark:bg-slate-800 p-8 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
         <h2 class="text-2xl font-bold mb-6 text-center">Giriş Yap</h2>
         <form method="POST" class="space-y-4">
@@ -430,9 +399,7 @@ def login():
             <button type="submit" class="w-full py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700">Giriş Yap</button>
         </form>
     </div>
-    {% endblock %}
-    """
-  )
+    """)
 
 
 @app.route("/logout")
@@ -448,10 +415,8 @@ def logout():
 @admin_required
 def admin_users():
   users = User.query.order_by(User.id.desc()).all()
-  return render_template_string(
-      BASE_TEMPLATE
-      + """
-    {% block content %}
+  return render_page(
+      """
     <div class="space-y-6">
         <h1 class="text-2xl font-bold">Kullanıcı Yönetimi</h1>
         <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm">
@@ -485,7 +450,6 @@ def admin_users():
             </table>
         </div>
     </div>
-    {% endblock %}
     """,
       users=users,
   )
@@ -517,10 +481,8 @@ def logs():
       .limit(100)
       .all()
   )
-  return render_template_string(
-      BASE_TEMPLATE
-      + """
-    {% block content %}
+  return render_page(
+      """
     <div class="space-y-6">
         <h1 class="text-2xl font-bold">İşlem Geçmişi (Loglar)</h1>
         <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm">
@@ -539,7 +501,6 @@ def logs():
             </table>
         </div>
     </div>
-    {% endblock %}
     """,
       logs=all_logs,
   )
@@ -568,10 +529,8 @@ def materials():
   materials_list = query.order_by(RawMaterial.id.desc()).all()
   categories = Category.query.all()
 
-  return render_template_string(
-      BASE_TEMPLATE
-      + """
-    {% block content %}
+  return render_page(
+      """
     <div class="space-y-6" x-data="{ openAdd: false }">
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <h1 class="text-2xl font-bold">Hammadde Yönetimi</h1>
@@ -628,7 +587,6 @@ def materials():
             </div>
         </div>
     </div>
-    {% endblock %}
     """,
       materials=materials_list,
       categories=categories,
@@ -683,10 +641,8 @@ def edit_material(id):
     return redirect(url_for("materials"))
 
   categories = Category.query.all()
-  return render_template_string(
-      BASE_TEMPLATE
-      + """
-    {% block content %}
+  return render_page(
+      """
     <div class="max-w-lg mx-auto bg-white dark:bg-slate-800 p-8 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
         <h2 class="text-2xl font-bold mb-6">Hammadde Düzenle</h2>
         <form method="POST" class="space-y-4">
@@ -699,7 +655,6 @@ def edit_material(id):
             <div class="flex justify-end gap-2"><a href="{{ url_for('materials') }}" class="px-4 py-2 bg-slate-200 dark:bg-slate-700 rounded-lg text-sm">İptal</a><button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm">Güncelle</button></div>
         </form>
     </div>
-    {% endblock %}
     """,
       m=m,
       categories=categories,
@@ -732,10 +687,8 @@ def suppliers():
         )
     )
   suppliers_list = query.order_by(Supplier.id.desc()).all()
-  return render_template_string(
-      BASE_TEMPLATE
-      + """
-    {% block content %}
+  return render_page(
+      """
     <div class="space-y-6" x-data="{ openAdd: false }">
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <h1 class="text-2xl font-bold">Firma Yönetimi</h1>
@@ -793,7 +746,6 @@ def suppliers():
             </div>
         </div>
     </div>
-    {% endblock %}
     """,
       suppliers=suppliers_list,
   )
@@ -848,10 +800,8 @@ def edit_supplier(id):
     flash("Güncellendi.", "success")
     return redirect(url_for("suppliers"))
 
-  return render_template_string(
-      BASE_TEMPLATE
-      + """
-    {% block content %}
+  return render_page(
+      """
     <div class="max-w-lg mx-auto bg-white dark:bg-slate-800 p-8 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
         <h2 class="text-2xl font-bold mb-6">Firma Düzenle</h2>
         <form method="POST" class="space-y-4">
@@ -870,7 +820,6 @@ def edit_supplier(id):
             <div class="flex justify-end gap-2"><a href="{{ url_for('suppliers') }}" class="px-4 py-2 bg-slate-200 dark:bg-slate-700 rounded-lg text-sm">İptal</a><button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm">Güncelle</button></div>
         </form>
     </div>
-    {% endblock %}
     """,
       s=s,
   )
@@ -883,10 +832,8 @@ def supplier_detail(id):
   prices_list = (
       Price.query.filter_by(supplier_id=id).order_by(Price.date.desc()).all()
   )
-  return render_template_string(
-      BASE_TEMPLATE
-      + """
-    {% block content %}
+  return render_page(
+      """
     <div class="space-y-6">
         <div class="flex justify-between items-center">
             <div><h1 class="text-2xl font-bold">{{ s.name }}</h1><p class="text-sm text-slate-500">{{ s.city }} | Yetkili: {{ s.contact_person }} | Tel: {{ s.phone }}</p></div>
@@ -922,7 +869,6 @@ def supplier_detail(id):
             </div>
         </div>
     </div>
-    {% endblock %}
     """,
       s=s,
       prices=prices_list,
@@ -953,7 +899,6 @@ def prices():
 
   prices_list = query.order_by(Price.date.desc()).all()
 
-  # En ucuz firma analizi
   subq = (
       db.session.query(
           Price.material_id,
@@ -977,10 +922,8 @@ def prices():
   materials = RawMaterial.query.filter_by(status="active").all()
   suppliers = Supplier.query.filter_by(status="active").all()
 
-  return render_template_string(
-      BASE_TEMPLATE
-      + """
-    {% block content %}
+  return render_page(
+      """
     <div class="space-y-8" x-data="{ openAdd: false }">
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <h1 class="text-2xl font-bold">Fiyatlar ve Karşılaştırma</h1>
@@ -1058,7 +1001,6 @@ def prices():
             </div>
         </div>
     </div>
-    {% endblock %}
     """,
       prices=prices_list,
       comparisons=comparisons,
@@ -1079,11 +1021,7 @@ def add_price():
   shipping_type = request.form.get("shipping_type")
 
   shipping_excluded = unit_price
-  shipping_included = (
-      unit_price + shipping_cost
-      if shipping_type == "per_unit"
-      else unit_price + shipping_cost
-  )
+  shipping_included = unit_price + shipping_cost
 
   p = Price(
       material_id=request.form.get("material_id"),
