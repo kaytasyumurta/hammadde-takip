@@ -1,4 +1,4 @@
-# app.py - Hammadde Fiyat ve Takip Sistemi (Pro & Kusursuz Tasarım)
+# app.py - Hammadde Fiyat ve Takip Sistemi (Pro & Kusursuz Sürüm)
 from datetime import datetime
 from functools import wraps
 import os
@@ -505,28 +505,30 @@ def categories_view():
             <div><h1 class="text-2xl font-bold">Kategori Yönetimi</h1><p class="text-sm text-slate-500 mt-1">Hammadde kategorilerini kolayca ekleyin ve yönetin.</p></div>
             <button @click="openAdd = true" class="px-5 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-semibold shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-all inline-flex items-center gap-2"><i class="fa-solid fa-plus"></i> Yeni Kategori</button>
         </div>
-        <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm max-w-3xl">
-            <table class="w-full text-left border-collapse">
-                <thead>
-                    <tr class="bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 uppercase">
-                        <th class="p-4.5">Kategori Adı</th>
-                        <th class="p-4.5 text-right">İşlemler</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-200 dark:divide-slate-800 text-sm">
-                    {% for c in categories %}
-                    <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors">
-                        <td class="p-4.5 font-semibold">{{ c.name }}</td>
-                        <td class="p-4.5 text-right space-x-3">
-                            <a href="{{ url_for('edit_category', id=c.id) }}" class="text-blue-600 dark:text-blue-400 font-semibold hover:underline">Düzenle</a>
-                            <a href="{{ url_for('delete_category', id=c.id) }}" onclick="return confirm('Bu kategoriyi silmek istediğinizden emin misiniz?')" class="text-rose-600 dark:text-rose-400 font-semibold hover:underline">Sil</a>
-                        </td>
-                    </tr>
-                    {% else %}
-                    <tr><td colspan="2" class="p-8 text-center text-slate-500">Kategori bulunamadı.</td></tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+        <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm max-w-3xl">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 uppercase">
+                            <th class="p-4.5">Kategori Adı</th>
+                            <th class="p-4.5 text-right">İşlemler</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-200 dark:divide-slate-800 text-sm">
+                        {% for c in categories %}
+                        <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors">
+                            <td class="p-4.5 font-semibold">{{ c.name }}</td>
+                            <td class="p-4.5 text-right space-x-3">
+                                <a href="{{ url_for('edit_category', id=c.id) }}" class="text-blue-600 dark:text-blue-400 font-semibold hover:underline">Düzenle</a>
+                                <a href="{{ url_for('delete_category', id=c.id) }}" onclick="return confirm('Bu kategoriyi silmek istediğinizden emin misiniz?')" class="text-rose-600 dark:text-rose-400 font-semibold hover:underline">Sil</a>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="2" class="p-8 text-center text-slate-500">Kategori bulunamadı.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
         <div x-show="openAdd" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50" style="display: none;">
             <div class="bg-white dark:bg-slate-900 p-8 rounded-3xl max-w-md w-full shadow-2xl border border-slate-200 dark:border-slate-800 space-y-4" @click.outside="openAdd = false">
@@ -617,43 +619,45 @@ def admin_users():
             <h1 class="text-2xl font-bold">Kullanıcı Yönetimi</h1>
             <p class="text-sm text-slate-500 mt-1">Sistem kullanıcı yetkilerini ve hesap durumlarını yönetin.</p>
         </div>
-        <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
-            <table class="w-full text-left border-collapse">
-                <thead>
-                    <tr class="bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 uppercase">
-                        <th class="p-4.5">Kullanıcı Adı</th>
-                        <th class="p-4.5">E-posta</th>
-                        <th class="p-4.5">Rol</th>
-                        <th class="p-4.5">Durum</th>
-                        <th class="p-4.5 text-right">İşlem</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-200 dark:divide-slate-800 text-sm">
-                    {% for u in users %}
-                    <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors">
-                        <td class="p-4.5 font-semibold">{{ u.username }}</td>
-                        <td class="p-4.5 text-slate-500">{{ u.email }}</td>
-                        <td class="p-4.5">
-                            <form action="{{ url_for('admin_update_user', user_id=u.id) }}" method="POST" class="flex items-center gap-2">
-                                <select name="role" class="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 dark:bg-slate-800 text-xs font-semibold">
-                                    <option value="admin" {{ 'selected' if u.role=='admin' }}>Admin</option>
-                                    <option value="yonetici" {{ 'selected' if u.role=='yonetici' }}>Yönetici</option>
-                                    <option value="personel" {{ 'selected' if u.role=='personel' }}>Personel</option>
-                                    <option value="goruntuleyen" {{ 'selected' if u.role=='goruntuleyen' }}>Görüntüleyen</option>
-                                </select>
-                        </td>
-                        <td class="p-4.5">
-                                <select name="status" class="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 dark:bg-slate-800 text-xs font-semibold">
-                                    <option value="active" {{ 'selected' if u.status=='active' }}>Aktif</option>
-                                    <option value="pending" {{ 'selected' if u.status=='pending' }}>Onay Bekliyor</option>
-                                    <option value="passive" {{ 'selected' if u.status=='passive' }}>Pasif</option>
-                                </select>
-                        </td>
-                        <td class="p-4.5 text-right"><button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-semibold shadow-sm hover:bg-blue-700 transition-all">Güncelle</button></form></td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+        <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 uppercase">
+                            <th class="p-4.5">Kullanıcı Adı</th>
+                            <th class="p-4.5">E-posta</th>
+                            <th class="p-4.5">Rol</th>
+                            <th class="p-4.5">Durum</th>
+                            <th class="p-4.5 text-right">İşlem</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-200 dark:divide-slate-800 text-sm">
+                        {% for u in users %}
+                        <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors">
+                            <td class="p-4.5 font-semibold">{{ u.username }}</td>
+                            <td class="p-4.5 text-slate-500">{{ u.email }}</td>
+                            <td class="p-4.5">
+                                <form action="{{ url_for('admin_update_user', user_id=u.id) }}" method="POST" class="flex items-center gap-2">
+                                    <select name="role" class="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 dark:bg-slate-800 text-xs font-semibold">
+                                        <option value="admin" {{ 'selected' if u.role=='admin' }}>Admin</option>
+                                        <option value="yonetici" {{ 'selected' if u.role=='yonetici' }}>Yönetici</option>
+                                        <option value="personel" {{ 'selected' if u.role=='personel' }}>Personel</option>
+                                        <option value="goruntuleyen" {{ 'selected' if u.role=='goruntuleyen' }}>Görüntüleyen</option>
+                                    </select>
+                            </td>
+                            <td class="p-4.5">
+                                    <select name="status" class="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 dark:bg-slate-800 text-xs font-semibold">
+                                        <option value="active" {{ 'selected' if u.status=='active' }}>Aktif</option>
+                                        <option value="pending" {{ 'selected' if u.status=='pending' }}>Onay Bekliyor</option>
+                                        <option value="passive" {{ 'selected' if u.status=='passive' }}>Pasif</option>
+                                    </select>
+                            </td>
+                            <td class="p-4.5 text-right"><button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-semibold shadow-sm hover:bg-blue-700 transition-all">Güncelle</button></form></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
     """,
@@ -694,27 +698,29 @@ def logs():
             <h1 class="text-2xl font-bold">İşlem Geçmişi (Loglar)</h1>
             <p class="text-sm text-slate-500 mt-1">Sistem üzerinde gerçekleştirilen tüm kritik işlemlerin denetim kaydı.</p>
         </div>
-        <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
-            <table class="w-full text-left border-collapse">
-                <thead>
-                    <tr class="bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 uppercase">
-                        <th class="p-4.5">Tarih</th>
-                        <th class="p-4.5">Kullanıcı</th>
-                        <th class="p-4.5">İşlem</th>
-                        <th class="p-4.5">Detay</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-200 dark:divide-slate-800 text-sm">
-                    {% for l, u in logs %}
-                    <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors">
-                        <td class="p-4.5 text-slate-400 text-xs font-mono">{{ l.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
-                        <td class="p-4.5 font-semibold">{{ u.username if u else 'Sistem' }}</td>
-                        <td class="p-4.5"><span class="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-xs font-mono font-bold text-blue-600 dark:text-blue-400">{{ l.action }}</span></td>
-                        <td class="p-4.5 text-slate-600 dark:text-slate-300">{{ l.details }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+        <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 uppercase">
+                            <th class="p-4.5">Tarih</th>
+                            <th class="p-4.5">Kullanıcı</th>
+                            <th class="p-4.5">İşlem</th>
+                            <th class="p-4.5">Detay</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-200 dark:divide-slate-800 text-sm">
+                        {% for l, u in logs %}
+                        <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors">
+                            <td class="p-4.5 text-slate-400 text-xs font-mono">{{ l.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                            <td class="p-4.5 font-semibold">{{ u.username if u else 'Sistem' }}</td>
+                            <td class="p-4.5"><span class="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-xs font-mono font-bold text-blue-600 dark:text-blue-400">{{ l.action }}</span></td>
+                            <td class="p-4.5 text-slate-600 dark:text-slate-300">{{ l.details }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
     """,
@@ -765,40 +771,42 @@ def materials():
             <a href="{{ url_for('materials') }}" class="px-6 py-3 bg-slate-100 dark:bg-slate-800 rounded-xl text-sm font-semibold hover:bg-slate-200">Sıfırla</a>
         </form>
 
-        <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
-            <table class="w-full text-left border-collapse">
-                <thead>
-                    <tr class="bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 uppercase">
-                        <th class="p-4.5">Kod</th>
-                        <th class="p-4.5">Adı</th>
-                        <th class="p-4.5">Kategori</th>
-                        <th class="p-4.5">Birim</th>
-                        <th class="p-4.5">Durum</th>
-                        <th class="p-4.5 text-right">İşlemler</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-200 dark:divide-slate-800 text-sm">
-                    {% for m in materials %}
-                    <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors">
-                        <td class="p-4.5 font-mono font-bold text-blue-600 dark:text-blue-400">{{ m.code }}</td>
-                        <td class="p-4.5 font-semibold">{{ m.name }}</td>
-                        <td class="p-4.5 text-slate-500">{{ m.category.name if m.category else '-' }}</td>
-                        <td class="p-4.5 uppercase font-medium text-xs">{{ m.unit }}</td>
-                        <td class="p-4.5"><span class="px-2.5 py-1 rounded-full text-xs font-bold {{ 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' if m.status=='active' else 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300' }}">{{ 'Aktif' if m.status=='active' else 'Pasif' }}</span></td>
-                        <td class="p-4.5 text-right space-x-3">
-                            {% if session.get('role') in ['admin', 'yonetici'] or m.created_by == session.get('user_id') %}
-                            <a href="{{ url_for('edit_material', id=m.id) }}" class="text-blue-600 dark:text-blue-400 font-semibold hover:underline">Düzenle</a>
-                            {% endif %}
-                            {% if session.get('role') in ['admin', 'yonetici'] %}
-                            <a href="{{ url_for('delete_material', id=m.id) }}" onclick="return confirm('Silmek istediğinize emin misiniz?')" class="text-rose-600 dark:text-rose-400 font-semibold hover:underline">Sil</a>
-                            {% endif %}
-                        </td>
-                    </tr>
-                    {% else %}
-                    <tr><td colspan="6" class="p-8 text-center text-slate-500">Hammadde kaydı bulunamadı.</td></tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+        <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 uppercase">
+                            <th class="p-4.5">Kod</th>
+                            <th class="p-4.5">Adı</th>
+                            <th class="p-4.5">Kategori</th>
+                            <th class="p-4.5">Birim</th>
+                            <th class="p-4.5">Durum</th>
+                            <th class="p-4.5 text-right">İşlemler</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-200 dark:divide-slate-800 text-sm">
+                        {% for m in materials %}
+                        <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors">
+                            <td class="p-4.5 font-mono font-bold text-blue-600 dark:text-blue-400">{{ m.code }}</td>
+                            <td class="p-4.5 font-semibold">{{ m.name }}</td>
+                            <td class="p-4.5 text-slate-500">{{ m.category.name if m.category else '-' }}</td>
+                            <td class="p-4.5 uppercase font-medium text-xs">{{ m.unit }}</td>
+                            <td class="p-4.5"><span class="px-2.5 py-1 rounded-full text-xs font-bold {{ 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' if m.status=='active' else 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300' }}">{{ 'Aktif' if m.status=='active' else 'Pasif' }}</span></td>
+                            <td class="p-4.5 text-right space-x-3">
+                                {% if session.get('role') in ['admin', 'yonetici'] or m.created_by == session.get('user_id') %}
+                                <a href="{{ url_for('edit_material', id=m.id) }}" class="text-blue-600 dark:text-blue-400 font-semibold hover:underline">Düzenle</a>
+                                {% endif %}
+                                {% if session.get('role') in ['admin', 'yonetici'] %}
+                                <a href="{{ url_for('delete_material', id=m.id) }}" onclick="return confirm('Silmek istediğinize emin misiniz?')" class="text-rose-600 dark:text-rose-400 font-semibold hover:underline">Sil</a>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="6" class="p-8 text-center text-slate-500">Hammadde kaydı bulunamadı.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
 
         <div x-show="openAdd" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50" style="display: none;">
@@ -931,41 +939,43 @@ def suppliers():
             <a href="{{ url_for('suppliers') }}" class="px-6 py-3 bg-slate-100 dark:bg-slate-800 rounded-xl text-sm font-semibold">Sıfırla</a>
         </form>
 
-        <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
-            <table class="w-full text-left border-collapse">
-                <thead>
-                    <tr class="bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 uppercase">
-                        <th class="p-4.5">Firma Adı</th>
-                        <th class="p-4.5">Yetkili</th>
-                        <th class="p-4.5">Telefon</th>
-                        <th class="p-4.5">Şehir</th>
-                        <th class="p-4.5">Durum</th>
-                        <th class="p-4.5 text-right">İşlemler</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-200 dark:divide-slate-800 text-sm">
-                    {% for s in suppliers %}
-                    <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors">
-                        <td class="p-4.5 font-semibold"><a href="{{ url_for('supplier_detail', id=s.id) }}" class="text-blue-600 dark:text-blue-400 hover:underline">{{ s.name }}</a></td>
-                        <td class="p-4.5 text-slate-600 dark:text-slate-300">{{ s.contact_person or '-' }}</td>
-                        <td class="p-4.5 text-slate-500">{{ s.phone or '-' }}</td>
-                        <td class="p-4.5">{{ s.city or '-' }}</td>
-                        <td class="p-4.5"><span class="px-2.5 py-1 rounded-full text-xs font-bold {{ 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' if s.status=='active' else 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300' }}">{{ 'Aktif' if s.status=='active' else 'Pasif' }}</span></td>
-                        <td class="p-4.5 text-right space-x-3">
-                            <a href="{{ url_for('supplier_detail', id=s.id) }}" class="text-emerald-600 dark:text-emerald-400 font-semibold hover:underline">Detay</a>
-                            {% if session.get('role') in ['admin', 'yonetici'] or s.created_by == session.get('user_id') %}
-                            <a href="{{ url_for('edit_supplier', id=s.id) }}" class="text-blue-600 dark:text-blue-400 font-semibold hover:underline">Düzenle</a>
-                            {% endif %}
-                            {% if session.get('role') in ['admin', 'yonetici'] %}
-                            <a href="{{ url_for('delete_supplier', id=s.id) }}" onclick="return confirm('Emin misiniz?')" class="text-rose-600 dark:text-rose-400 font-semibold hover:underline">Sil</a>
-                            {% endif %}
-                        </td>
-                    </tr>
-                    {% else %}
-                    <tr><td colspan="6" class="p-8 text-center text-slate-500">Kayıt bulunamadı.</td></tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+        <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 uppercase">
+                            <th class="p-4.5">Firma Adı</th>
+                            <th class="p-4.5">Yetkili</th>
+                            <th class="p-4.5">Telefon</th>
+                            <th class="p-4.5">Şehir</th>
+                            <th class="p-4.5">Durum</th>
+                            <th class="p-4.5 text-right">İşlemler</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-200 dark:divide-slate-800 text-sm">
+                        {% for s in suppliers %}
+                        <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors">
+                            <td class="p-4.5 font-semibold"><a href="{{ url_for('supplier_detail', id=s.id) }}" class="text-blue-600 dark:text-blue-400 hover:underline">{{ s.name }}</a></td>
+                            <td class="p-4.5 text-slate-600 dark:text-slate-300">{{ s.contact_person or '-' }}</td>
+                            <td class="p-4.5 text-slate-500">{{ s.phone or '-' }}</td>
+                            <td class="p-4.5">{{ s.city or '-' }}</td>
+                            <td class="p-4.5"><span class="px-2.5 py-1 rounded-full text-xs font-bold {{ 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' if s.status=='active' else 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300' }}">{{ 'Aktif' if s.status=='active' else 'Pasif' }}</span></td>
+                            <td class="p-4.5 text-right space-x-3">
+                                <a href="{{ url_for('supplier_detail', id=s.id) }}" class="text-emerald-600 dark:text-emerald-400 font-semibold hover:underline">Detay</a>
+                                {% if session.get('role') in ['admin', 'yonetici'] or s.created_by == session.get('user_id') %}
+                                <a href="{{ url_for('edit_supplier', id=s.id) }}" class="text-blue-600 dark:text-blue-400 font-semibold hover:underline">Düzenle</a>
+                                {% endif %}
+                                {% if session.get('role') in ['admin', 'yonetici'] %}
+                                <a href="{{ url_for('delete_supplier', id=s.id) }}" onclick="return confirm('Emin misiniz?')" class="text-rose-600 dark:text-rose-400 font-semibold hover:underline">Sil</a>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="6" class="p-8 text-center text-slate-500">Kayıt bulunamadı.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
 
         <div x-show="openAdd" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50" style="display: none;">
@@ -1092,35 +1102,37 @@ def supplier_detail(id):
         </div>
         <div class="space-y-4">
             <h3 class="text-lg font-bold">Bu Firmaya Ait Fiyat Kayıtları</h3>
-            <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
-                <table class="w-full text-left border-collapse">
-                    <thead>
-                        <tr class="bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 uppercase">
-                            <th class="p-4.5">Tarih</th>
-                            <th class="p-4.5">Hammadde</th>
-                            <th class="p-4.5">Birim Fiyat</th>
-                            <th class="p-4.5">Nakliye Durumu</th>
-                            <th class="p-4.5">Toplam Maliyet</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-slate-200 dark:divide-slate-800 text-sm">
-                        {% for p in prices %}
-                        <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors">
-                            <td class="p-4.5 text-slate-400 text-xs">{{ p.date }}</td>
-                            <td class="p-4.5 font-semibold">{{ p.material.name }}</td>
-                            <td class="p-4.5">{{ p.unit_price | tr_num }} {{ p.currency }}</td>
-                            <td class="p-4.5">
-                                {% if p.shipping_status == 'included' %}<span class="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">Nakliye Dahil (0 TL)</span>
-                                {% elif p.shipping_status == 'excluded' %}<span class="px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300">Nakliye Hariç (+{{ p.shipping_cost | tr_num }})</span>
-                                {% else %}<span class="px-2.5 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">Nakliye Belirsiz</span>{% endif %}
-                            </td>
-                            <td class="p-4.5 font-extrabold text-blue-600">{{ p.shipping_included | tr_num }} {{ p.currency }}</td>
-                        </tr>
-                        {% else %}
-                        <tr><td colspan="5" class="p-8 text-center text-slate-500">Kayıt yok.</td></tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+            <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 uppercase">
+                                <th class="p-4.5">Tarih</th>
+                                <th class="p-4.5">Hammadde</th>
+                                <th class="p-4.5">Birim Fiyat</th>
+                                <th class="p-4.5">Nakliye Durumu</th>
+                                <th class="p-4.5">Toplam Maliyet</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-200 dark:divide-slate-800 text-sm">
+                            {% for p in prices %}
+                            <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors">
+                                <td class="p-4.5 text-slate-400 text-xs">{{ p.date }}</td>
+                                <td class="p-4.5 font-semibold">{{ p.material.name }}</td>
+                                <td class="p-4.5">{{ p.unit_price | tr_num }} {{ p.currency }}</td>
+                                <td class="p-4.5">
+                                    {% if p.shipping_status == 'included' %}<span class="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">Nakliye Dahil (0 TL)</span>
+                                    {% elif p.shipping_status == 'excluded' %}<span class="px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300">Nakliye Hariç (+{{ p.shipping_cost | tr_num }})</span>
+                                    {% else %}<span class="px-2.5 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">Nakliye Belirsiz</span>{% endif %}
+                                </td>
+                                <td class="p-4.5 font-extrabold text-blue-600">{{ p.shipping_included | tr_num }} {{ p.currency }}</td>
+                            </tr>
+                            {% else %}
+                            <tr><td colspan="5" class="p-8 text-center text-slate-500">Kayıt yok.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
@@ -1223,39 +1235,41 @@ def prices():
                     </select>
                 </form>
             </div>
-            <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
-                <table class="w-full text-left border-collapse">
-                    <thead>
-                        <tr class="bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 uppercase">
-                            <th class="p-4.5">Tarih</th>
-                            <th class="p-4.5">Hammadde</th>
-                            <th class="p-4.5">Firma</th>
-                            <th class="p-4.5">Birim Fiyat</th>
-                            <th class="p-4.5">Nakliye Durumu</th>
-                            <th class="p-4.5">Toplam Fiyat</th>
-                            <th class="p-4.5 text-right">İşlem</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-slate-200 dark:divide-slate-800 text-sm">
-                        {% for p in prices %}
-                        <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors">
-                            <td class="p-4.5 text-slate-400 text-xs">{{ p.date }}</td>
-                            <td class="p-4.5 font-semibold">{{ p.material.name }}</td>
-                            <td class="p-4.5 text-slate-600 dark:text-slate-300">{{ p.supplier.name }}</td>
-                            <td class="p-4.5">{{ p.unit_price | tr_num }} {{ p.currency }}</td>
-                            <td class="p-4.5">
-                                {% if p.shipping_status == 'included' %}<span class="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">Nakliye Dahil (0 TL)</span>
-                                {% elif p.shipping_status == 'excluded' %}<span class="px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300">Nakliye Hariç (+{{ p.shipping_cost | tr_num }})</span>
-                                {% else %}<span class="px-2.5 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">Nakliye Belirsiz</span>{% endif %}
-                            </td>
-                            <td class="p-4.5 font-extrabold text-blue-600">{{ p.shipping_included | tr_num }} {{ p.currency }}</td>
-                            <td class="p-4.5 text-right">{% if session.get('role') in ['admin', 'yonetici'] %}<a href="{{ url_for('delete_price', id=p.id) }}" onclick="return confirm('Emin misiniz?')" class="text-rose-600 dark:text-rose-400 text-xs font-semibold hover:underline">Sil</a>{% endif %}</td>
-                        </tr>
-                        {% else %}
-                        <tr><td colspan="7" class="p-8 text-center text-slate-500">Kayıt bulunamadı.</td></tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+            <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 uppercase">
+                                <th class="p-4.5">Tarih</th>
+                                <th class="p-4.5">Hammadde</th>
+                                <th class="p-4.5">Firma</th>
+                                <th class="p-4.5">Birim Fiyat</th>
+                                <th class="p-4.5">Nakliye Durumu</th>
+                                <th class="p-4.5">Toplam Fiyat</th>
+                                <th class="p-4.5 text-right">İşlem</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-200 dark:divide-slate-800 text-sm">
+                            {% for p in prices %}
+                            <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors">
+                                <td class="p-4.5 text-slate-400 text-xs">{{ p.date }}</td>
+                                <td class="p-4.5 font-semibold">{{ p.material.name }}</td>
+                                <td class="p-4.5 text-slate-600 dark:text-slate-300">{{ p.supplier.name }}</td>
+                                <td class="p-4.5">{{ p.unit_price | tr_num }} {{ p.currency }}</td>
+                                <td class="p-4.5">
+                                    {% if p.shipping_status == 'included' %}<span class="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">Nakliye Dahil (0 TL)</span>
+                                    {% elif p.shipping_status == 'excluded' %}<span class="px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300">Nakliye Hariç (+{{ p.shipping_cost | tr_num }})</span>
+                                    {% else %}<span class="px-2.5 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">Nakliye Belirsiz</span>{% endif %}
+                                </td>
+                                <td class="p-4.5 font-extrabold text-blue-600">{{ p.shipping_included | tr_num }} {{ p.currency }}</td>
+                                <td class="p-4.5 text-right">{% if session.get('role') in ['admin', 'yonetici'] %}<a href="{{ url_for('delete_price', id=p.id) }}" onclick="return confirm('Emin misiniz?')" class="text-rose-600 dark:text-rose-400 text-xs font-semibold hover:underline">Sil</a>{% endif %}</td>
+                            </tr>
+                            {% else %}
+                            <tr><td colspan="7" class="p-8 text-center text-slate-500">Kayıt bulunamadı.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
 
