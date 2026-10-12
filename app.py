@@ -235,7 +235,7 @@ def render_page(content_html, **kwargs):
         <div class="max-w-7xl mx-auto px-4 mt-4 w-full">
             {% with messages = get_flashed_messages(with_categories=true) %}
                 {% if messages %}
-                    {% for category, message %}
+                    {% for category, message in messages %}
                         <div class="p-4 mb-4 rounded-lg text-sm border {{ 'bg-emerald-50 border-emerald-200 text-emerald-800 dark:bg-emerald-900/30 dark:border-emerald-800 dark:text-emerald-300' if category == 'success' else 'bg-rose-50 border-rose-200 text-rose-800 dark:bg-rose-900/30 dark:border-rose-800 dark:text-rose-300' }}">
                             {{ message }}
                         </div>
