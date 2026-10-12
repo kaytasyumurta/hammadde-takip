@@ -252,7 +252,7 @@ def render_page(content_html, **kwargs):
     </body>
     </html>
     """
-  return render_template_string(base, **kwargs)
+  return render_template_string(base, content_html=content_html, **kwargs)
 
 
 @app.route("/")
