@@ -2,7 +2,7 @@
 import os
 from datetime import datetime, timedelta
 from functools import wraps
-from flask import Flask, render_template_string, request,렐, redirect, url_for, flash, session
+from flask import Flask, render_template_string, request, redirect, url_for, flash, session
 from flask_sqlalchemy import SQLAlchemy
 import sqlalchemy as sa
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -27,7 +27,7 @@ class Firm(db.Model):
     name = db.Column(db.String(150), nullable=False)
     license_start = db.Column(db.DateTime, default=datetime.utcnow)
     license_days = db.Column(db.Integer, default=30)
-    status = db.Column(db.String(20), default='active') # active, expired, suspended
+    status = db.Column(db.String(20), default='active')
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 class LicenseKey(db.Model):
@@ -43,11 +43,11 @@ class LicenseKey(db.Model):
 class User(db.Model):
     __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key=True)
-    firm_id = db.Column(db.Integer, db.ForeignKey('firms.id'), nullable=True) # Superadmin için null
+    firm_id = db.Column(db.Integer, db.ForeignKey('firms.id'), nullable=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
-    role = db.Column(db.String(30), nullable=False, default='personel') # super_admin, firma_yoneticisi, kantar_personeli, satin_alma
+    role = db.Column(db.String(30), nullable=False, default='personel')
     status = db.Column(db.String(20), nullable=False, default='active')
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     firm = db.relationship('Firm', backref='users')
@@ -81,15 +81,15 @@ class SupplyOrder(db.Model):
     firm_id = db.Column(db.Integer, db.ForeignKey('firms.id'), nullable=False)
     supplier_id = db.Column(db.Integer, db.ForeignKey('suppliers.id'), nullable=False)
     material_id = db.Column(db.Integer, db.ForeignKey('raw_materials.id'), nullable=False)
-    target_amount = db.Column(db.Float, nullable=False) # Planlanan tonaj
-    delivered_amount = db.Column(db.Float, default=0.0) # Gerçekleşen tonaj
+    target_amount = db.Column(db.Float, nullable=False)
+    delivered_amount = db.Column(db.Float, default=0.0)
     unit_price = db.Column(db.Float, nullable=False)
     currency = db.Column(db.String(10), default='TL')
-    shipping_model = db.Column(db.String(30), default='separate') # separate, included
+    shipping_model = db.Column(db.String(30), default='separate')
     shipping_cost = db.Column(db.Float, default=0.0)
     start_date = db.Column(db.String(20))
     end_date = db.Column(db.String(20))
-    status = db.Column(db.String(30), default='Aktif') # Aktif, Tamamlandı, İptal
+    status = db.Column(db.String(30), default='Aktif')
     notes = db.Column(db.Text)
 
     supplier = db.relationship('Supplier', backref='orders')
@@ -103,9 +103,9 @@ class ScaleRecord(db.Model):
     date = db.Column(db.String(20), nullable=False)
     plate = db.Column(db.String(30), nullable=False)
     driver = db.Column(db.String(100))
-    gross_weight = db.Column(db.Float, nullable=False) # Brüt
-    tare_weight = db.Column(db.Float, nullable=False)  # Dara
-    net_weight = db.Column(db.Float, nullable=False)   # Net Tonaj
+    gross_weight = db.Column(db.Float, nullable=False)
+    tare_weight = db.Column(db.Float, nullable=False)
+    net_weight = db.Column(db.Float, nullable=False)
     shipping_cost = db.Column(db.Float, default=0.0)
     status = db.Column(db.String(20), default='Onaylandı')
 
@@ -123,7 +123,6 @@ class AuditLog(db.Model):
 # --- İLK KURULUM & DEMO VERİLER ---
 with app.app_context():
     db.create_all()
-    # Süper Admin Oluşturma
     if not User.query.filter_by(role='super_admin').first():
         sa_user = User(
             username='superadmin',
@@ -135,13 +134,11 @@ with app.app_context():
         db.session.add(sa_user)
         db.session.commit()
     
-    # Örnek Firma (KAYMER) Oluşturma
     if not Firm.query.filter_by(code='KAYMER').first():
         kaymer_firm = Firm(code='KAYMER', name='KAYMER A.Ş.', license_days=30, status='active')
         db.session.add(kaymer_firm)
         db.session.commit()
 
-        # Kaymer Firma Yöneticisi
         mgr = User(
             firm_id=kaymer_firm.id,
             username='kaymer_yonetici',
@@ -152,7 +149,6 @@ with app.app_context():
         )
         db.session.add(mgr)
         
-        # Örnek Kategori ve Hammadde
         cat = Category(firm_id=kaymer_firm.id, name='Tahıllar')
         db.session.add(cat)
         db.session.commit()
@@ -162,7 +158,6 @@ with app.app_context():
         db.session.add_all([mat, sup])
         db.session.commit()
 
-        # Örnek Tedarik Emri (1000 Ton Mısır)
         order = SupplyOrder(
             firm_id=kaymer_firm.id,
             supplier_id=sup.id,
@@ -180,11 +175,17 @@ with app.app_context():
         db.session.add(order)
         db.session.commit()
 
-def log_action(firm_id, user_id, action, details):
-    db.session.add(AuditLog(firm_id=firm_id, user_id=user_id, action=action, details=details))
-    db.session.commit()
+def tr_format(value):
+    if value is None:
+        return ""
+    try:
+        val = float(value)
+        return f"{val:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    except:
+        return str(value)
 
-# --- DEKORATÖRLER ---
+app.jinja_env.filters['tr_num'] = tr_format
+
 def login_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
@@ -215,18 +216,6 @@ def license_check(f):
         return f(*args, **kwargs)
     return decorated
 
-def tr_format(value):
-    if value is None:
-        return ""
-    try:
-        val = float(value)
-        return f"{val:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-    except:
-        return str(value)
-
-app.jinja_env.filters['tr_num'] = tr_format
-
-# --- ŞABLONLAR & ARAYÜZ (DARK/LIGHT + SOL MENÜ + TÜM ÖZELLİKLER) ---
 EXPIRED_LICENSE_TEMPLATE = """
 <!DOCTYPE html>
 <html lang="tr" class="dark">
@@ -235,7 +224,7 @@ EXPIRED_LICENSE_TEMPLATE = """
     <div class="bg-slate-900 border border-slate-800 p-8 rounded-2xl max-w-md text-center space-y-4 shadow-2xl">
         <div class="w-16 h-16 bg-rose-500/10 text-rose-500 rounded-2xl flex items-center justify-center mx-auto text-2xl font-bold">⚠️</div>
         <h1 class="text-xl font-bold">Firma Lisans Süresi Doldu</h1>
-        <p class="text-xs text-slate-400">{{ firm.name }} firmasına ait lisans süresi sona ermiştir. Verileriniz güvendedir ancak operasyonel işlemlere devam etmek için lisans anahtarı giriniz.</p>
+        <p class="text-xs text-slate-400">{{ firm.name }} firmasına ait lisans süresi sona ermiştir. İşlemlere devam etmek için lisans anahtarı giriniz.</p>
         <form action="{{ url_for('renew_license') }}" method="POST" class="space-y-3 pt-2">
             <input type="text" name="key_code" placeholder="Lisans Uzatma Anahtarı" required class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white outline-none focus:border-blue-500">
             <button type="submit" class="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-xl shadow-lg">Lisansı Aktifleştir</button>
@@ -280,7 +269,6 @@ BASE_TEMPLATE = """
     </style>
 </head>
 <body class="bg-slate-100 dark:bg-navy-950 text-slate-800 dark:text-slate-100 min-h-screen flex flex-col antialiased">
-    <!-- ÜST BAR -->
     <header class="h-16 bg-white dark:bg-navy-900 border-b border-slate-200 dark:border-navy-800 px-6 flex items-center justify-between sticky top-0 z-40 shadow-sm">
         <a href="{{ url_for('index') }}" class="flex items-center gap-3">
             <div class="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center text-white font-black text-xl shadow-lg shadow-blue-600/30">H</div>
@@ -301,19 +289,6 @@ BASE_TEMPLATE = """
         {% endif %}
 
         <div class="flex items-center gap-3 relative">
-            <div class="relative">
-                <button @click="settingsOpen = !settingsOpen" class="w-9 h-9 rounded-xl bg-slate-100 dark:bg-navy-800 text-slate-600 dark:text-slate-300 flex items-center justify-center border border-slate-200 dark:border-navy-700">
-                    <i class="fa-solid fa-gear text-sm"></i>
-                </button>
-                <div x-show="settingsOpen" @click.outside="settingsOpen = false" class="absolute right-0 mt-2 w-48 bg-white dark:bg-navy-900 border border-slate-200 dark:border-navy-800 rounded-2xl shadow-xl p-3 z-50 space-y-2" style="display: none;">
-                    <div class="text-[10px] font-bold text-slate-400 uppercase px-2">Dil / Language</div>
-                    <div class="grid grid-cols-2 gap-1 bg-slate-100 dark:bg-navy-950 p-1 rounded-xl">
-                        <button @click="lang='tr'; localStorage.setItem('lang', 'tr'); settingsOpen=false" :class="lang=='tr' ? 'bg-blue-600 text-white' : 'text-slate-600 dark:text-slate-400'" class="py-1 rounded-lg text-xs font-bold">TR</button>
-                        <button @click="lang='en'; localStorage.setItem('lang', 'en'); settingsOpen=false" :class="lang=='en' ? 'bg-blue-600 text-white' : 'text-slate-600 dark:text-slate-400'" class="py-1 rounded-lg text-xs font-bold">EN</button>
-                    </div>
-                </div>
-            </div>
-
             <button @click="darkMode = !darkMode; localStorage.setItem('darkMode', darkMode)" class="w-9 h-9 rounded-xl bg-slate-100 dark:bg-navy-800 text-slate-600 dark:text-slate-300 flex items-center justify-center border border-slate-200 dark:border-navy-700">
                 <i class="fa-solid" :class="darkMode ? 'fa-sun text-amber-400' : 'fa-moon text-slate-700'"></i>
             </button>
@@ -353,9 +328,6 @@ BASE_TEMPLATE = """
                     <i class="fa-solid fa-leaf text-sm w-5"></i> Hammaddeler
                 </a>
             </div>
-            <div class="pt-6 border-t border-slate-200 dark:border-navy-800 text-[10px] text-slate-400">
-                Hammadde & Kantar Altyapısı &copy; 2026
-            </div>
         </aside>
         {% endif %}
 
@@ -379,7 +351,6 @@ BASE_TEMPLATE = """
 def render_page(content_html, active_page='home', **kwargs):
     return render_template_string(BASE_TEMPLATE.replace("CONTENT_PLACEHOLDER", content_html), active_page=active_page, **kwargs)
 
-# --- ROTALAR ---
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -463,7 +434,6 @@ def index():
     </div>
     """, active_page='home', active_orders=active_orders, completed_orders=completed_orders, scale_count=scale_count)
 
-# --- SÜPER YÖNETİCİ PANELİ ---
 @app.route('/superadmin')
 @login_required
 def super_admin_dashboard():
@@ -556,7 +526,6 @@ def renew_license():
     flash("Geçersiz veya daha önce kullanılmış lisans anahtarı.", "error")
     return redirect(url_for('index'))
 
-# --- TEDARİK YÖNETİMİ MODÜLÜ ---
 @app.route('/supply-orders')
 @login_required
 @license_check
@@ -615,7 +584,6 @@ def supply_orders_view():
             </table>
         </div>
 
-        <!-- MODAL: YENİ TEDARİK -->
         <div x-show="openAdd" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50" style="display: none;">
             <div class="bg-white dark:bg-navy-900 p-6 rounded-2xl max-w-lg w-full border border-slate-200 dark:border-navy-800 space-y-4 shadow-2xl" @click.outside="openAdd = false">
                 <h3 class="text-base font-bold">Yeni Hammadde Tedarik Emri</h3>
@@ -656,7 +624,6 @@ def add_supply_order():
     flash("Tedarik emri eklendi.", "success")
     return redirect(url_for('supply_orders_view'))
 
-# --- KANTAR VE ARAÇ GİRİŞ MODÜLÜ ---
 @app.route('/scale-records')
 @login_required
 @license_check
@@ -706,7 +673,6 @@ def scale_records_view():
             </table>
         </div>
 
-        <!-- MODAL: KANTAR GİRİŞİ -->
         <div x-show="openAdd" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50" style="display: none;" x-data="{ gross: 0, tare: 0 }">
             <div class="bg-white dark:bg-navy-900 p-6 rounded-2xl max-w-lg w-full border border-slate-200 dark:border-navy-800 space-y-4 shadow-2xl" @click.outside="openAdd = false">
                 <h3 class="text-base font-bold">Kantar Araç Tartım Kaydı</h3>
@@ -756,12 +722,10 @@ def add_scale_record():
         driver=request.form.get('driver'),
         gross_weight=gross,
         tare_weight=tare,
-        net_weight=net,
-        created_by=session.get('user_id')
+        net_weight=net
     )
     db.session.add(record)
 
-    # Tedarik emrini otomatik güncelle
     order = SupplyOrder.query.get(order_id)
     if order:
         order.delivered_amount += net
@@ -772,7 +736,6 @@ def add_scale_record():
     flash(f"Kantar kaydı eklendi. Net {net:.3f} Ton tedariğe işlendi.", "success")
     return redirect(url_for('scale_records_view'))
 
-# --- TEMEL FİRMA & HAMMADDE ROTALARI ---
 @app.route('/suppliers')
 @login_required
 @license_check
