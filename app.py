@@ -101,7 +101,9 @@ class Price(db.Model):
   date = db.Column(db.String(20), nullable=False)
   currency = db.Column(db.String(10), nullable=False, default="TL")
   unit_price = db.Column(db.Float, nullable=False)
-  shipping_type = db.Column(db.String(20), nullable=False, default="per_unit")
+  shipping_status = db.Column(
+      db.String(30), nullable=False, default="included"
+  )  # included, excluded, unknown
   shipping_cost = db.Column(db.Float, default=0)
   shipping_excluded = db.Column(db.Float, nullable=False)
   shipping_included = db.Column(db.Float, nullable=False)
@@ -206,6 +208,7 @@ BASE_TEMPLATE = """
                         <a href="{{ url_for('suppliers') }}" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-700">Firmalar</a>
                         <a href="{{ url_for('prices') }}" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-700">Fiyatlar ve Karşılaştırma</a>
                         {% if session.get('role') in ['admin', 'yonetici'] %}
+                        <a href="{{ url_for('categories_view') }}" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-700">Kategoriler</a>
                         <a href="{{ url_for('logs') }}" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-700">Loglar</a>
                         {% endif %}
                         {% if session.get('role') == 'admin' %}
@@ -414,6 +417,114 @@ def logout():
   return redirect(url_for("login"))
 
 
+# --- KATEGORİ YÖNETİMİ (YENİ) ---
+@app.route("/categories")
+@editor_or_admin_required
+def categories_view():
+  cats = Category.query.order_by(Category.name).all()
+  return render_page(
+      """
+    <div class="space-y-6" x-data="{ openAdd: false }">
+        <div class="flex justify-between items-center">
+            <h1 class="text-2xl font-bold">Kategori Yönetimi</h1>
+            <button @click="openAdd = true" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"><i class="fa-solid fa-plus mr-1"></i> Yeni Kategori Ekle</button>
+        </div>
+        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm max-w-2xl">
+            <table class="w-full text-left border-collapse">
+                <thead><tr class="bg-slate-50 dark:bg-slate-700/50 border-b border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-500 uppercase"><th class="p-4">Kategori Adı</th><th class="p-4 text-right">İşlemler</th></tr></thead>
+                <tbody class="divide-y divide-slate-200 dark:divide-slate-700 text-sm">
+                    {% for c in categories %}
+                    <tr>
+                        <td class="p-4 font-medium">{{ c.name }}</td>
+                        <td class="p-4 text-right space-x-2">
+                            <a href="{{ url_for('edit_category', id=c.id) }}" class="text-blue-600 hover:underline">Düzenle</a>
+                            <a href="{{ url_for('delete_category', id=c.id) }}" onclick="return confirm('Bu kategoriyi silmek istediğinizden emin misiniz?')" class="text-rose-600 hover:underline">Sil</a>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="2" class="p-6 text-center text-slate-500">Kategori bulunamadı.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div x-show="openAdd" class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" style="display: none;">
+            <div class="bg-white dark:bg-slate-800 p-6 rounded-xl max-w-md w-full shadow-lg" @click.outside="openAdd = false">
+                <h3 class="text-lg font-bold mb-4">Yeni Kategori Ekle</h3>
+                <form action="{{ url_for('add_category') }}" method="POST" class="space-y-4">
+                    <div><label class="block text-sm font-medium mb-1">Kategori Adı</label><input type="text" name="name" required class="w-full px-3 py-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600"></div>
+                    <div class="flex justify-end gap-2"><button type="button" @click="openAdd = false" class="px-4 py-2 bg-slate-200 dark:bg-slate-700 rounded-lg text-sm">İptal</button><button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm">Kaydet</button></div>
+                </form>
+            </div>
+        </div>
+    </div>
+    """,
+      categories=cats,
+  )
+
+
+@app.route("/categories/add", methods=["POST"])
+@editor_or_admin_required
+def add_category():
+  name = request.form.get("name", "").strip()
+  if name:
+    try:
+      db.session.add(Category(name=name))
+      db.session.commit()
+      log_action(session["user_id"], "ADD_CATEGORY", f"Kategori eklendi: {name}")
+      flash("Kategori başarıyla eklendi.", "success")
+    except:
+      db.session.rollback()
+      flash("Bu kategori adı zaten mevcut.", "error")
+  return redirect(url_for("categories_view"))
+
+
+@app.route("/categories/edit/<int:id>", methods=["GET", "POST"])
+@editor_or_admin_required
+def edit_category(id):
+  cat = Category.query.get_or_404(id)
+  if request.method == "POST":
+    cat.name = request.form.get("name", "").strip()
+    try:
+      db.session.commit()
+      log_action(
+          session["user_id"], "EDIT_CATEGORY", f"Kategori güncellendi: {id}"
+      )
+      flash("Kategori güncellendi.", "success")
+      return redirect(url_for("categories_view"))
+    except:
+      db.session.rollback()
+      flash("Bu kategori adı başka bir kayıtta var.", "error")
+
+  return render_page(
+      """
+    <div class="max-w-md mx-auto bg-white dark:bg-slate-800 p-8 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+        <h2 class="text-2xl font-bold mb-6">Kategori Düzenle</h2>
+        <form method="POST" class="space-y-4">
+            <div><label class="block text-sm font-medium mb-1">Kategori Adı</label><input type="text" name="name" value="{{ cat.name }}" required class="w-full px-3 py-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600"></div>
+            <div class="flex justify-end gap-2"><a href="{{ url_for('categories_view') }}" class="px-4 py-2 bg-slate-200 dark:bg-slate-700 rounded-lg text-sm">İptal</a><button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm">Güncelle</button></div>
+        </form>
+    </div>
+    """,
+      cat=cat,
+  )
+
+
+@app.route("/categories/delete/<int:id>")
+@editor_or_admin_required
+def delete_category(id):
+  cat = Category.query.get_or_404(id)
+  if cat.materials:
+    flash(
+        "Bu kategoriye bağlı hammaddeler bulunduğu için silinemez.", "error"
+    )
+  else:
+    db.session.delete(cat)
+    db.session.commit()
+    log_action(session["user_id"], "DELETE_CATEGORY", f"Kategori silindi: {id}")
+    flash("Kategori silindi.", "success")
+  return redirect(url_for("categories_view"))
+
+
 @app.route("/admin/users")
 @admin_required
 def admin_users():
@@ -530,7 +641,7 @@ def materials():
     query = query.filter_by(category_id=int(cat_filter))
 
   materials_list = query.order_by(RawMaterial.id.desc()).all()
-  categories = Category.query.all()
+  categories = Category.query.order_by(Category.name).all()
 
   return render_page(
       """
@@ -645,7 +756,7 @@ def edit_material(id):
     flash("Güncellendi.", "success")
     return redirect(url_for("materials"))
 
-  categories = Category.query.all()
+  categories = Category.query.order_by(Category.name).all()
   return render_page(
       """
     <div class="max-w-lg mx-auto bg-white dark:bg-slate-800 p-8 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
@@ -857,14 +968,18 @@ def supplier_detail(id):
             <h3 class="text-lg font-bold">Bu Firmaya Ait Fiyat Kayıtları</h3>
             <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm">
                 <table class="w-full text-left border-collapse">
-                    <thead><tr class="bg-slate-50 dark:bg-slate-700/50 border-b border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-500 uppercase"><th class="p-4">Tarih</th><th class="p-4">Hammadde</th><th class="p-4">Birim Fiyat</th><th class="p-4">Nakliye Hariç</th><th class="p-4">Nakliye Dahil</th></tr></thead>
+                    <thead><tr class="bg-slate-50 dark:bg-slate-700/50 border-b border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-500 uppercase"><th class="p-4">Tarih</th><th class="p-4">Hammadde</th><th class="p-4">Birim Fiyat</th><th class="p-4">Nakliye Durumu</th><th class="p-4">Nakliye Dahil Toplam</th></tr></thead>
                     <tbody class="divide-y divide-slate-200 dark:divide-slate-700 text-sm">
                         {% for p in prices %}
                         <tr>
                             <td class="p-4 text-slate-500">{{ p.date }}</td>
                             <td class="p-4 font-medium">{{ p.material.name }}</td>
                             <td class="p-4">{{ p.unit_price | tr_num }} {{ p.currency }}</td>
-                            <td class="p-4 font-medium">{{ p.shipping_excluded | tr_num }} {{ p.currency }}</td>
+                            <td class="p-4">
+                                {% if p.shipping_status == 'included' %}<span class="text-emerald-600 font-medium">Nakliye Dahil (0 TL)</span>
+                                {% elif p.shipping_status == 'excluded' %}<span class="text-amber-600 font-medium">Nakliye Hariç (+{{ p.shipping_cost | tr_num }})</span>
+                                {% else %}<span class="text-slate-400 font-medium">Nakliye Belirsiz</span>{% endif %}
+                            </td>
                             <td class="p-4 font-bold text-blue-600">{{ p.shipping_included | tr_num }} {{ p.currency }}</td>
                         </tr>
                         {% else %}
@@ -939,7 +1054,7 @@ def prices():
             <h3 class="text-lg font-bold flex items-center gap-2"><i class="fa-solid fa-ranking-star text-amber-500"></i> En Uygun Tedarikçiler (Özet)</h3>
             <div class="overflow-x-auto">
                 <table class="w-full text-left border-collapse">
-                    <thead><tr class="bg-slate-50 dark:bg-slate-700/50 border-b border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-500 uppercase"><th class="p-3">Hammadde</th><th class="p-3">En Ucuz Tedarikçi</th><th class="p-3">Nakliye Dahil Fiyat</th><th class="p-3">Tarih</th></tr></thead>
+                    <thead><tr class="bg-slate-50 dark:bg-slate-700/50 border-b border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-500 uppercase"><th class="p-3">Hammadde</th><th class="p-3">En Ucuz Tedarikçi</th><th class="p-3">Toplam Maliyet</th><th class="p-3">Tarih</th></tr></thead>
                     <tbody class="divide-y divide-slate-200 dark:divide-slate-700 text-sm">
                         {% for c in comparisons %}
                         <tr class="bg-emerald-50/50 dark:bg-emerald-950/20">
@@ -967,7 +1082,7 @@ def prices():
             </div>
             <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm">
                 <table class="w-full text-left border-collapse">
-                    <thead><tr class="bg-slate-50 dark:bg-slate-700/50 border-b border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-500 uppercase"><th class="p-4">Tarih</th><th class="p-4">Hammadde</th><th class="p-4">Firma</th><th class="p-4">Birim Fiyat</th><th class="p-4">Nakliye Dahil</th><th class="p-4 text-right">İşlemler</th></tr></thead>
+                    <thead><tr class="bg-slate-50 dark:bg-slate-700/50 border-b border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-500 uppercase"><th class="p-4">Tarih</th><th class="p-4">Hammadde</th><th class="p-4">Firma</th><th class="p-4">Birim Fiyat</th><th class="p-4">Nakliye Durumu</th><th class="p-4">Toplam Fiyat</th><th class="p-4 text-right">İşlemler</th></tr></thead>
                     <tbody class="divide-y divide-slate-200 dark:divide-slate-700 text-sm">
                         {% for p in prices %}
                         <tr>
@@ -975,32 +1090,47 @@ def prices():
                             <td class="p-4 font-medium">{{ p.material.name }}</td>
                             <td class="p-4 text-slate-600 dark:text-slate-300">{{ p.supplier.name }}</td>
                             <td class="p-4">{{ p.unit_price | tr_num }} {{ p.currency }}</td>
+                            <td class="p-4">
+                                {% if p.shipping_status == 'included' %}<span class="text-emerald-600 text-xs font-semibold">Nakliye Dahil (0 TL)</span>
+                                {% elif p.shipping_status == 'excluded' %}<span class="text-amber-600 text-xs font-semibold">Nakliye Hariç (+{{ p.shipping_cost | tr_num }})</span>
+                                {% else %}<span class="text-slate-400 text-xs font-semibold">Nakliye Belirsiz</span>{% endif %}
+                            </td>
                             <td class="p-4 font-bold text-blue-600">{{ p.shipping_included | tr_num }} {{ p.currency }}</td>
                             <td class="p-4 text-right">{% if session.get('role') in ['admin', 'yonetici'] %}<a href="{{ url_for('delete_price', id=p.id) }}" onclick="return confirm('Emin misiniz?')" class="text-rose-600 text-xs">Sil</a>{% endif %}</td>
                         </tr>
                         {% else %}
-                        <tr><td colspan="6" class="p-6 text-center text-slate-500">Kayıt bulunamadı.</td></tr>
+                        <tr><td colspan="7" class="p-6 text-center text-slate-500">Kayıt bulunamadı.</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
         </div>
-        <div x-show="openAdd" class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" style="display: none;" x-data="{ shippingType: 'per_unit', unitPrice: 0, shippingCost: 0 }">
+        <div x-show="openAdd" class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" style="display: none;" x-data="{ shippingStatus: 'included' }">
             <div class="bg-white dark:bg-slate-800 p-6 rounded-xl max-w-lg w-full shadow-lg" @click.outside="openAdd = false">
                 <h3 class="text-lg font-bold mb-4">Yeni Fiyat Ekle</h3>
                 <form action="{{ url_for('add_price') }}" method="POST" class="space-y-4">
                     <div class="grid grid-cols-2 gap-4">
-                        <div><label class="block text-sm font-medium mb-1">Hammadde</label><select name="material_id" required class="w-full px-3 py-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600">{% for m in materials %}<option value="{{ m.id }}">{{ m.name }}</option>{% endfor %}</select></div>
+                        <div><label class="block text-sm font-medium mb-1">Hammadde</label><select name="material_id" required class="w-full px-3 py-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600">{% for m in materials %}<option value="{{ m.id }}">{{ m.name }} ({{ m.unit }})</option>{% endfor %}</select></div>
                         <div><label class="block text-sm font-medium mb-1">Firma</label><select name="supplier_id" required class="w-full px-3 py-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600">{% for s in suppliers %}<option value="{{ s.id }}">{{ s.name }}</option>{% endfor %}</select></div>
                     </div>
                     <div class="grid grid-cols-3 gap-4">
                         <div><label class="block text-sm font-medium mb-1">Tarih</label><input type="date" name="date" value="{{ today }}" required class="w-full px-3 py-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600"></div>
                         <div><label class="block text-sm font-medium mb-1">Para Birimi</label><select name="currency" class="w-full px-3 py-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600"><option value="TL">TL</option><option value="USD">USD</option><option value="EUR">EUR</option></select></div>
-                        <div><label class="block text-sm font-medium mb-1">Birim Fiyat</label><input type="number" step="0.01" name="unit_price" x-model.number="unitPrice" required class="w-full px-3 py-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600"></div>
+                        <div><label class="block text-sm font-medium mb-1">Birim Fiyat</label><input type="number" step="0.01" name="unit_price" required class="w-full px-3 py-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600"></div>
                     </div>
                     <div class="grid grid-cols-2 gap-4">
-                        <div><label class="block text-sm font-medium mb-1">Nakliye Tipi</label><select name="shipping_type" x-model="shippingType" class="w-full px-3 py-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600"><option value="per_unit">Birim Başına</option><option value="per_shipment">Toplam Sevkiyat</option></select></div>
-                        <div><label class="block text-sm font-medium mb-1">Nakliye Ücreti</label><input type="number" step="0.01" name="shipping_cost" x-model.number="shippingCost" value="0" class="w-full px-3 py-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600"></div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Nakliye Durumu</label>
+                            <select name="shipping_status" x-model="shippingStatus" class="w-full px-3 py-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600">
+                                <option value="included">Nakliye Dahil (0 TL)</option>
+                                <option value="excluded">Nakliye Hariç / Ek Ücret (kg/ton)</option>
+                                <option value="unknown">Nakliye Fiyatı Belirsiz</option>
+                            </select>
+                        </div>
+                        <div x-show="shippingStatus === 'excluded'">
+                            <label class="block text-sm font-medium mb-1">Nakliye Ücreti (kg/ton)</label>
+                            <input type="number" step="0.01" name="shipping_cost" value="0" class="w-full px-3 py-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600">
+                        </div>
                     </div>
                     <div class="flex justify-end gap-2"><button type="button" @click="openAdd = false" class="px-4 py-2 bg-slate-200 dark:bg-slate-700 rounded-lg text-sm">İptal</button><button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm">Kaydet</button></div>
                 </form>
@@ -1024,8 +1154,14 @@ def add_price():
     return redirect(url_for("index"))
 
   unit_price = float(request.form.get("unit_price") or 0)
-  shipping_cost = float(request.form.get("shipping_cost") or 0)
-  shipping_type = request.form.get("shipping_type")
+  shipping_status = request.form.get("shipping_status", "included")
+
+  if shipping_status == "included":
+    shipping_cost = 0.0
+  elif shipping_status == "unknown":
+    shipping_cost = 0.0
+  else:
+    shipping_cost = float(request.form.get("shipping_cost") or 0)
 
   shipping_excluded = unit_price
   shipping_included = unit_price + shipping_cost
@@ -1036,7 +1172,7 @@ def add_price():
       date=request.form.get("date"),
       currency=request.form.get("currency"),
       unit_price=unit_price,
-      shipping_type=shipping_type,
+      shipping_status=shipping_status,
       shipping_cost=shipping_cost,
       shipping_excluded=shipping_excluded,
       shipping_included=shipping_included,
